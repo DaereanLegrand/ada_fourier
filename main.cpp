@@ -9,16 +9,7 @@ using std::complex;
 using std::string;
 using std::vector;
 
-//para usar el diagrama de la mariposa
-int reverse(int num, int lg_n) {
-	int res = 0;
-	for (int i = 0; i < lg_n; i++) {
-		if (num & (1 << i))
-			res |= 1 << (lg_n - 1 - i);
-	}
-	return res;
-}
-
+/*Para encontrar la siguiente potencia de 2*/
 unsigned findNextPowerOf2(unsigned n)
 {
 	n = n - 1;
@@ -31,39 +22,59 @@ unsigned findNextPowerOf2(unsigned n)
 
 struct fourier {
 
+	//nuestra libreria de audio
 	AudioFile<double> audio;
+	//el vector donde guardamos toda la data de nuestro audio
 	vector<complex<double>> audio_data;
-	int n = 0, total_data=0;
-	float PI = 3.14159;
+	int n = 0, total_data=0, bits_n=0;
+	const float PI = 3.14159265359;
+
+	double max = 0;
 
 	fourier() {}
 
 	fourier(string path) {
 		audio.load(path);
 		/* Despues de cargar el audio, nos aseguramos de que la cantidad de datos
-		que devuelva sea potencia de 2, si no lo es llenamos con ceros hasta llegar
+		que devuelva sea potencia de 2. Si no lo es, llenamos con ceros hasta llegar
 		a la potencia de 2 mas cercana.*/
 		total_data = audio.getNumSamplesPerChannel();
 		int resttopower = findNextPowerOf2(total_data) - total_data;
 		audio_data.resize(total_data+resttopower);
 		for (int i = 0; i < total_data; i++) 
-			audio_data[i]=(complex<double>(audio.samples[0][i],0));
+			audio_data[i] = (complex<double>(audio.samples[0][i], 0));
 
+		//llena de ceros
 		for (int i = 0; i < resttopower; i++)
 			audio_data[total_data+i]=(complex<double>(0, 0));
 		
 		n = audio_data.size();
+
+		//saca el numero de bits de n
+		while ((1 << bits_n) < n)
+			bits_n++;
 	}
 
-	//Dividir y venceras iterativo (DITFFT)
-	void fft(bool invert) {
-		int lg_n = 0;
-		while ((1 << lg_n) < n)
-			lg_n++;
+	/*para usar el diagrama de la mariposa,
+	Revertimos los bits, por ejemplo: 100 -> 001 , 011 -> 110*/
+	int bit_reversal(int num) {
+		int reversal = 0;
+		for (int i = 0; i < bits_n; i++) {
+			if (num & (1 << i))
+				reversal |= 1 << (bits_n - 1 - i);
+		}
+		return reversal;
+	}
 
+	//Dividir y venceras iterativo (DIT FFT)
+	void fft(bool invert) {
+
+		/*Aplicamos bit_reversal en nuestra data*/
+		int reversal = 0;
 		for (int i = 0; i < n; i++) {
-			if (i < reverse(i, lg_n))
-				swap(audio_data[i], audio_data[reverse(i, lg_n)]);
+			reversal = bit_reversal(i);
+			if (i < reversal)
+				swap(audio_data[i], audio_data[reversal]);
 		}
 
 		for (int len = 2; len <= n; len <<= 1) {
@@ -92,6 +103,25 @@ struct fourier {
 		}
 	}
 
+	//testeando filtros, quiza borre luego
+	void filter_reduction(float porcentage) {
+		double magnitude;
+		for (int i = 0; i < audio_data.size(); i++) {
+			magnitude = abs(audio_data[i].real() + audio_data[i].imag());
+			if (max < magnitude)
+				max = magnitude;
+		}
+
+		double max_filter = max*porcentage;
+
+		for (int i = 0; i < audio_data.size(); i++) {
+			magnitude = abs(audio_data[i].real() + audio_data[i].imag());
+			if (max_filter < magnitude) {
+				audio_data[i] = complex<double>(0, 0);
+			}
+		}
+	}
+
 	void save() {
 		for (int i = 0; i < total_data; i++) {
 			audio.samples[0][i] = audio_data[i].real();
@@ -103,10 +133,11 @@ struct fourier {
 int main()
 {
 	fourier test("C:/Users/sebpost/Documents/Universidad/Buenas_nochesv4.wav");
-	cout << test.audio_data[46000]<<endl;
+	cout << test.audio_data[66000]<<endl;
 	test.fft(0);
-	cout << test.audio_data[46000] << endl;
+	cout << test.audio_data[66000] << endl;
 	test.fft(1);
-	cout << test.audio_data[46000] << endl;
+	cout << test.audio_data[66000] << endl;
 	test.save();
+	cout << test.max << endl;
 }
