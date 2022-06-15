@@ -9,6 +9,7 @@ using std::complex;
 using std::string;
 using std::vector;
 
+//para usar el diagrama de la mariposa
 int reverse(int num, int lg_n) {
 	int res = 0;
 	for (int i = 0; i < lg_n; i++) {
@@ -54,7 +55,7 @@ struct fourier {
 		n = audio_data.size();
 	}
 
-	//Dividir y venceras iterativo
+	//Dividir y venceras iterativo (DITFFT)
 	void fft(bool invert) {
 		int lg_n = 0;
 		while ((1 << lg_n) < n)
@@ -70,8 +71,9 @@ struct fourier {
 			double ang = 2 * PI / len;
 			if (!invert)
 				ang = ang * -1;
-			complex<double> euler(cos(ang), sin(ang));
+			complex<double> euler_w(cos(ang), sin(ang));
 
+			//Diagrama de la mariposa
 			for (int i = 0; i < n; i += len) {
 				complex<double> temp(1);
 				for (int j = 0; j < len / 2; j++) {
@@ -79,7 +81,7 @@ struct fourier {
 					complex<double> v = audio_data[i + j + len / 2] * temp;
 					audio_data[i + j] = u + v;
 					audio_data[i + j + len / 2] = u - v;
-					temp *= euler;
+					temp *= euler_w;
 				}
 			}
 		}
