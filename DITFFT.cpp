@@ -12,12 +12,14 @@ using std::vector;
 /*Para encontrar la siguiente potencia de 2*/
 unsigned findNextPowerOf2(unsigned n)
 {
-	n = n - 1;
-
-	while (n & n - 1) {
-		n = n & n - 1;
-	}
-	return n << 1;
+	n--;
+	n |= n >> 1;
+	n |= n >> 2;
+	n |= n >> 4;
+	n |= n >> 8;
+	n |= n >> 16;
+	n++;
+	return n;
 }
 
 struct fourier {
@@ -88,10 +90,11 @@ struct fourier {
 			for (int i = 0; i < n; i += len) {
 				complex<double> temp(1);
 				for (int j = 0; j < len / 2; j++) {
-					complex<double> u = audio_data[i + j];
-					complex<double> v = audio_data[i + j + len / 2] * temp;
-					audio_data[i + j] = u + v;
-					audio_data[i + j + len / 2] = u - v;
+					//y0=x0+x1*(raiz_de_unidad); y1=x0-x1*(raiz_de_unidad);
+					complex<double> x0 = audio_data[i + j];
+					complex<double> x1 = audio_data[i + j + len / 2] * temp;
+					audio_data[i + j] = x0 + x1;
+					audio_data[i + j + len / 2] = x0 - x1;
 					temp *= euler_w;
 				}
 			}
@@ -103,7 +106,8 @@ struct fourier {
 		}
 	}
 
-	//testeando filtros, quiza borre luego
+
+
 	void filter_reduction(float porcentage) {
 		double magnitude;
 		for (int i = 0; i < audio_data.size(); i++) {
@@ -112,7 +116,7 @@ struct fourier {
 				max = magnitude;
 		}
 
-		double max_filter = max*porcentage;
+		double max_filter = max * porcentage;
 
 		for (int i = 0; i < audio_data.size(); i++) {
 			magnitude = abs(audio_data[i].real() + audio_data[i].imag());
@@ -122,9 +126,11 @@ struct fourier {
 		}
 	}
 
+	//guarda el archivo modificado de data
 	void save() {
 		for (int i = 0; i < total_data; i++) {
 			audio.samples[0][i] = audio_data[i].real();
+			audio.samples[1][i] = audio_data[i].real();
 		}
 		audio.save("new_audio.wav");
 	}
@@ -136,6 +142,7 @@ int main()
 	cout << test.audio_data[66000]<<endl;
 	test.fft(0);
 	cout << test.audio_data[66000] << endl;
+	test.filter_reduction(0.3);
 	test.fft(1);
 	cout << test.audio_data[66000] << endl;
 	test.save();
